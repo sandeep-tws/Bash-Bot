@@ -1,3 +1,47 @@
-Models/
-offload/
+# Virtual Environment
+venv/
+env/
 bashbot_env/
+.venv/
+
+# Model files (large files - download from provided link)
+model/bashbot_merged/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+*.zone.identifier
+*:Zone.Identifier
+
+# Streamlit
+.streamlit/
+

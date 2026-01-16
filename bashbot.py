@@ -20,37 +20,58 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 # =========================================================
 # CONFIGURATION
 # =========================================================
-MERGED_MODEL = "/home/sandeep_naruka/bashbot/Models/bashbot_merged"  # path to merged model
-OFFLOAD_DIR = "/home/sandeep_naruka/bashbot/offload"
+MERGED_MODEL = "/home/sandeep-naruka/Bash-Bot/model/bashbot_merged"  # path to merged model
+OFFLOAD_DIR = "/home/sandeep-naruka/Bash-Bot/offload"
 
 os.makedirs(OFFLOAD_DIR, exist_ok=True)
 
-# =========================================================
-# LOAD TOKENIZER
-# =========================================================
-print("Loading tokenizer...")
-tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL, trust_remote_code=True)
-tokenizer.pad_token = tokenizer.eos_token
+# Global model and tokenizer
+_tokenizer = None
+_model = None
 
 # =========================================================
-# LOAD MERGED MODEL
+# LOAD TOKENIZER AND MODEL
 # =========================================================
-print("Loading merged model...")
+def load_model():
+    """Load tokenizer and model."""
+    global _tokenizer, _model
+    
+    if _tokenizer is None or _model is None:
+        print("Loading tokenizer...")
+        _tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL, trust_remote_code=True)
+        _tokenizer.pad_token = _tokenizer.eos_token
+        
+        print("Loading merged model...")
+        bnb_config = BitsAndBytesConfig(
+            load_in_8bit=True,
+            bnb_8bit_use_double_quant=False,
+            llm_int8_enable_fp32_cpu_offload=True,
+        )
+        
+        _model = AutoModelForCausalLM.from_pretrained(
+            MERGED_MODEL,
+            quantization_config=bnb_config,
+            dtype=torch.float16,
+            device_map="cpu",
+            trust_remote_code=True,
+        )
+        _model.eval()
+    
+    return _tokenizer, _model
 
-bnb_config = BitsAndBytesConfig(
-    load_in_8bit=True,
-    bnb_8bit_use_double_quant=False,
-    llm_int8_enable_fp32_cpu_offload=True,
-)
+def get_tokenizer():
+    """Get the loaded tokenizer."""
+    global _tokenizer
+    if _tokenizer is None:
+        load_model()
+    return _tokenizer
 
-model = AutoModelForCausalLM.from_pretrained(
-    MERGED_MODEL,
-    quantization_config=bnb_config,
-    dtype=torch.float16,
-    device_map="cpu",
-    trust_remote_code=True,
-)
-model.eval()
+def get_model():
+    """Get the loaded model."""
+    global _model
+    if _model is None:
+        load_model()
+    return _model
 
 # =========================================================
 # GENERATION FUNCTION
@@ -61,8 +82,11 @@ def generate_command(prompt: str, max_tokens: int = 25) -> str:
     Optimized for speed and clean output.
     """
     if not prompt.strip():
-        return "mpty prompt provided. Please enter a valid command request."
+        return "Empty prompt provided. Please enter a valid command request."
 
+    tokenizer = get_tokenizer()
+    model = get_model()
+    
     device = "cuda" if torch.cuda.is_available() else "cpu"
     inputs = tokenizer(prompt, return_tensors="pt", padding=True).to(device)
 
